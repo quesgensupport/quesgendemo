@@ -1,0 +1,424 @@
+---
+title: "Quesgen- Intro_to_rstudio_&_the_tidyverse"
+output: github_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(
+    echo = TRUE,
+    tidy = FALSE,
+    size = "small")
+getwd()
+library(magrittr)
+```
+
+
+# Intro Topics
+
+1. R code basics & the `tidyverse`
+
+2. Locating and importing your data
+
+3. Renaming a variable (depression score)
+
+4. Factors
+
+5. Basic number summaries
+
+6. ggplot2 graphics
+
+7. Comparing means with t-tests
+
+## R code basics & the `tidyverse`
+
+This tutorial will give you a very brief introduction to a set of packages developed by Hadley Wickham called the `tidyverse`.
+
+A typical RStudio session will start with loading the necessary packages, importing the data, then cleaning/wrangling/graphing/modeling the data. 
+
+This tutorial will use the [tidyverse](http://tidyverse.org/) and the R graphics cookbook packages [gcookbook](https://cran.r-project.org/web/packages/gcookbook/gcookbook.pdf).
+
+![tidyverse](./tidyverse2.1.png)
+
+### R Code Basics
+
+* R is an **object** oriented programming language, and the primary object in R for storing data is the `vector` (other objects include matrices, arrays, and data frames).
+
+* Data manipulation and modeling in R is done using **functions**. If objects are the subjects of the R syntax, functions are the verbs (*functions do things to objects*).
+
+* Chaining multiple functions together can make your code hard to read, so we will be using the pipe operator (`%>%`) from the `magrittr` package. This allows your function calls to be read left to right (like a sentence).
+
+* In the R syntax, `#` is used to indicate a comment. These lines are not run by the console.
+
+* Most functions are written by R users and get loaded as part of a `package`. *You can see what package each function comes from using the `package::function()` format*.  
+
+***
+
+Install the packages we will be using for this tutorial using `install.packages("gcookbook")`,  `install.packages("mosaic")`, and `install.packages("tidyverse")`.
+
+```{r install_packages, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(mosaic)
+library(magrittr)
+library(gcookbook)
+library(tidyverse)
+```
+
+***
+
+## Locating and importing your data
+
+> "the most important piece of information on any map is your current position." - Army Map Reading and Land Navigation Field Manual
+
+Finding the files on your computer is easier when you know where the document you are currently working in is located. We can find this using the `dir("./")` command. 
+
+```{r my_files_location}
+dir("./")
+```
+
+We can also find the parent folder using two periods `dir("../")`
+
+```{r parent_dir}
+dir("../")
+```
+
+Fortunately, we are using the R project file so everything is right where we need it. I recommend using these as opposed to setting the working directory in a script (read more [here](https://www.tidyverse.org/articles/2017/12/workflow-vs-script/)).
+
+Now that we can see the files in our current folder, we should import the `HospAdminData.csv` data set using the `readr::read_csv` command. 
+
+```{r HospAdminData_import}
+HospAdminData <- readr::read_csv("HospAdminData.csv")
+```
+
+**TIP:** the assignment operator is `<-` but you can use `=`.
+
+We get some useful information about the data import when the function is executed: 1) we can see the names of the columns in `cols()` and 2) we can see the data type R recognized and imported them as (note `read_csv()` doesn't require `stringsAsFactors = FALSE`! Read more about this annoying bug [here](https://simplystatistics.org/2015/07/24/stringsasfactors-an-unauthorized-biography/)).
+
+This created a `tbl_df` or "tibble" named `HospAdminData`. These objects print nicely in the RStudio window. You can view this new object by simply typing the name into the script. Try it below.
+
+```{r print_HospAdminData}
+HospAdminData
+```
+
+You can also do this using the **Import Dataset** tool in the RStudio **Environment** pane. 
+
+![import_dataset_GUI](./importdataset.png)
+
+_Note the `read_csv` command produced by RStudio. 
+
+**DATA PROVENANCE:** It is helpful to know where everything in your analysis came from (especially the data). This entire tutorial is up on Github, so we should include a link to the repo in our script/Rmarkdown file or--even better--download the data from the repo in our script (shown below).
+
+```{r download_data}
+HospAdminData_url <- "https://raw.githubusercontent.com/mjfrigaard/QuesgenDemo/master/HospAdminData.csv"
+HospAdminData_destfile <- "HospAdminData.csv"
+download.file(HospAdminData_url, HospAdminData_destfile)
+```
+
+We can check with `dir(./)`
+
+```{r check_download}
+dir("./")
+```
+
+***
+
+#### What does your data look like?
+
+You can get the structure of your data using `str()` or `dplyr::glimpse()`
+
+```{r structure}
+str(HospAdminData)
+```
+
+```{r glimpse}
+dplyr::glimpse(HospAdminData)
+```
+
+### The pipe `%>%`
+
+Pipes makes your life easier and make writing R code more like writing a sentence. The pipe `%>%` moves whatever was on the left side of a function and sends it to the first argument of the function, but on the right side. This makes it possible to write your functions left to right (i.e. in a pipeline).
+
+So this: 
+
+`str(HospAdminData)`
+
+Becomes this:
+
+`HospAdminData %>% str()`
+
+This might not seem like a big deal at first, but many times we want to use multiple functions, so putting them in a pipeline is better than writing them inside-out.  
+
+```r
+third_function( <- the last function 
+    second_function(
+        (first_function(
+                HospAdminData # <- the object 
+                        )
+                    )
+               )
+```
+
+Try using the pipe on the `HospAdminData` to see the `names()` in the data set.
+
+```{r names}
+HospAdminData %>% names()
+```
+
+##### Checking the shape of a data set
+
+If you want to check the number of observations in your data, use `base::nrow()`
+
+```{r nrow}
+HospAdminData %>% base::nrow()
+```
+
+Or check the number of variables in your data, use `base::ncol()`
+
+```{r}
+HospAdminData %>% base::ncol()
+```
+
+Or get both with the `base::dim()` function:
+
+```{r dim}
+HospAdminData %>% base::dim()
+```
+
+You can also use the top of your data with `Matrix::head()` and `Matrix::tail()`.
+
+```{r head}
+HospAdminData %>% Matrix::head()
+```
+
+
+```{r tail}
+HospAdminData %>% Matrix::tail()
+```
+
+***IMPORTANT TAKEAWAYS ABOUT DATA STRUCTURE:***
+
+I recommend using the `dplyr::glimpse()` function more than any of the other functions above. It prints the most amount of your data to the screen (Observations, Variables, Format, Names, Data Values).
+
+```{r glimpse_is_best}
+HospAdminData %>% glimpse()
+```
+
+***
+
+## Renaming Variables
+
+The depression score variable `BSI18DeprScoreRaw` is long and hard to write out (also not very intuitive), so let's rename it something more meaningful. We can do this with the `dplyr::rename()` function. 
+
+_This package was loaded at the beginning of the session in the `tidyverse`_. 
+
+The syntax inside the `dplyr::rename()` function is to have the **new name on the left-hand side** of the `=` sign and the **old name on the right-hand side**. 
+
+Let's also rename everything so it's lowercase (as opposed to CamelCase) and uses underscores (`_`).
+
+```{r rename_depression}
+HospAdminData <- HospAdminData %>% dplyr::rename(depression = BSI18DeprScoreRaw)
+```
+
+Now let's see if it worked:
+
+```{r check_depression}
+HospAdminData %>% glimpse()
+```
+
+***What if we only wanted to see the result of `depression` and not the entire data frame?***
+
+To see a single column within a data frame or tibble, you have to use subset notation. There are many options for sub-setting columns in data frames, but we will stick with the commonly used `dataframe$column` notation. 
+
+```{r depression_glimpse}
+HospAdminData$depression %>% glimpse()
+```
+
+**TIP:** You can use the `dplyr::select()` function to rename and reorder columns.
+
+```{r HospAdminData_new_names}
+HospAdminData <- HospAdminData %>% 
+    dplyr::select(
+        sub_id = SubjectID,
+        sex = Sex,
+        age = Age,
+        pat_type = PatientType,
+        depression,
+        death_cause = DeathCause,
+        death_time = DeathTimeSinceInj)
+HospAdminData %>% glimpse()
+```
+
+This looks like what we would expect to find (based on what we already know about about these data).
+
+## Factors
+
+Factors storing individual text strings as `integers`, combined with a set of character `labels` that match the integers back to the text. We want to convert our `sex` variable to a factor, but first we need to clean it up a bit. The numerical value and colon that precedes the text for sex needs to be removed from these values. We can accomplish this with the `stringr::str_remove()` function and a new pipe operator. 
+
+```{r fix_female}
+# If you need to see the named elements of an object, you can use `%$%`.
+# test
+HospAdminData %$% str_remove(sex,
+                             pattern = "2:") %>% head()
+# assign
+HospAdminData$sex <- HospAdminData %$% str_remove(sex,
+                             pattern = "2:")
+# verify
+HospAdminData$sex %>% head()
+```
+
+This introduces my three steps for cleaning variables: 1) **test** the function or pipeline (and actually look at the result)  2) assign the function back to the data frame 3) verify everything was done correctly (test if possible).
+
+We can repeat this process for the `1:Male` data. 
+
+```{r fix_male}
+# test
+HospAdminData %$% str_remove(sex,
+                             pattern = "1:") %>% head()
+# assign
+HospAdminData$sex <- HospAdminData %$% str_remove(sex,
+                             pattern = "1:")
+# verify
+HospAdminData$sex %>% head()
+```
+
+Great! Now we can convert this variable to a factor (and test it with `base::is.factor()`). 
+
+```{r convert_to_factor}
+HospAdminData$sex <- factor(HospAdminData$sex)
+base::is.factor(HospAdminData$sex)
+```
+
+
+***
+
+## Number summaries
+
+A simple five number summary can be called using `mosaic::fivenum()` function. 
+
+```{r fivenum}
+library(mosaic)
+HospAdminData %$% fivenum(depression) # note different pipe
+```
+
+This is nice, but `base::summary()` provides more information. 
+
+```{r depression_summary} 
+HospAdminData %$% summary(depression)
+```
+
+Or if we want the result in a tibble, we can use `mosaic::favstats()`
+
+```{r favstats, warning=FALSE}
+HospAdminData %$% favstats(depression)
+```
+
+
+***
+
+## Visualizations using `ggplot2`
+
+A quick overview of the `ggplot2` syntax:
+
+1. `ggplot()` creates a __coordinate system__  
+
+2. The first arguments are the `(data = HospAdminData)` and an aesthetic **mapping argument**, `aes()` of variables.   
+
+3. Graphs are built in layers, added (`+`) with geometric objects or 'geoms' (`geom_`). For example, the `geom_point()` geom creates a scatter plot.     
+
+So in general, the **`ggplot2`** template is:
+
+```
+ggplot(data = <DATA>) +
+<GEOM_FUNCTION>(mapping = aes(<MAPPINGS>))
+```
+
+```{r ggplot_basics}
+HospAdminData %>% ggplot(aes(depression)) +
+    geom_histogram()
+```
+
+We can see the message "`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.". We will follow this advice with `binwidth = 1`
+
+```{r depression_binwidth}
+HospAdminData %>% ggplot(aes(depression)) +
+    geom_histogram(binwidth = 1)
+```
+
+`ggplot2` offers maximum flexibility with building plots. For example, I can use the `fill` aesthetic and `alpha` arguments to start to break down distributions of `depression` across levels of `sex`.
+
+```{r}
+HospAdminData %>% 
+    ggplot(aes(x = depression, 
+               fill = sex)) +
+            geom_histogram(position = "identity",
+                           alpha = 0.4,
+                           binwidth = 1)
+```
+
+
+Or I can use the `color` argument with a different geom to see the distribution of `depression` between `sex`.
+
+```{r geom_freqpoly}
+HospAdminData %>% 
+    ggplot(aes(x = depression, 
+               color = sex)) +
+            geom_freqpoly(position = "identity", 
+                           binwidth = 1)
+```
+
+
+Or I can use faceting to see the difference in `depression` scores between `sex`.  
+
+```{r}
+HospAdminData %>% 
+    ggplot(aes(depression, fill = sex)) + # the data and the variables
+                geom_histogram(binwidth = 1) + # the geom (histogram) layer
+                        facet_wrap(~ sex, 
+                                   ncol = 1) # the facet layer
+```
+
+
+If I want to separate the bars according to their percents (and add `labels`), I can use the `geom_bar()` and `scale_y_continuous` functions. 
+
+```{r geom_bar_percents}
+HospAdminData %>% ggplot(aes(x = sex)) +  
+        geom_bar(aes(y = (..count..)/sum(..count..))) + 
+            scale_y_continuous(labels = scales::percent) + 
+            xlab("Patient Sex") +
+            ylab("Percent")
+```
+
+
+This has been a very quick introduction to `ggplot2` graphs, read more [here](http://www.storybench.org/getting-started-data-visualization-r-using-ggplot2/)
+
+
+*** 
+
+## Basic Statistical Tests
+
+Statistical tests and models attempt to quantify patterns between variables and the strength of these patterns. This typically requires comparing mathmatical summaries of each variable (like the mean or median) to example the strength of each relationship. For example, if we want to compare the mean `depression` score between `sex`, we would need to summarize each variable to a single number, then compare these two numbers to see how different they are (we already know they are different from the graphs above). We can do this using the t-test. 
+
+### The T-Test
+
+The t-test command in R is fairly straightforward. If you have the data for different groups stored in a single column, then the `t.test()` function looks like this: 
+
+```
+ttest_model <- t.test(outcome ~ predictor, data = dataFrame, paired = FALSE/TRUE)
+```
+
+If we wanted to look at a t-test of `despression` vs. `sex`, the command would be:
+
+```{r ttest_model}
+ttest_model <- t.test(depression ~ sex, data = HospAdminData, paired = FALSE)
+ttest_model 
+```
+
+We can see here that the mean depression score for males was `5.39` vs. `6.04` for the females. However, these differences were not significant at an alpha level of 0.05. * _This is also apparent because our 95% confidence interval crosses 0 (`-1.35` - `0.05`)_
+
+If we want to keep this file as a script, use `knitr::purl("intro_to_rstudio_&_the_tidyverse.Rmd")` to create an R script from the Rmarkdown.
+
+```{r create_script}
+# knitr::purl("intro_to_rstudio_&_the_tidyverse.Rmd")
+```
+
+
+
+
